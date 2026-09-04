@@ -9,38 +9,63 @@ jobs:
     timeout-minutes: 350
 
     steps:
-      - name: Install FFmpeg and yt-dlp
+
+      - name: Install FFmpeg and yt-dlp Nightly
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg python3-pip
-          python3 -m pip install -U yt-dlp
+          python3 -m pip install -U --pre "yt-dlp[default,curl-cffi]"
 
-      - name: TikTok to YouTube
+      - name: Show yt-dlp version
+        run: |
+          yt-dlp --version
+          ffmpeg -version | head -n 1
+
+      - name: Test TikTok LIVE
+        env:
+          TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
+        run: |
+          echo "Testing TikTok LIVE..."
+
+          yt-dlp \
+            --verbose \
+            --no-playlist \
+            "$TIKTOK_URL" \
+            -F
+
+      - name: Start TikTok to YouTube
         env:
           TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
           YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
+
           while true
           do
-            echo "======================================"
-            echo "Getting fresh TikTok LIVE stream URL..."
-            echo "======================================"
 
-            STREAM_URL=$(yt-dlp \
+            echo "========================================"
+            echo "Getting TikTok LIVE stream..."
+            echo "========================================"
+
+            yt-dlp \
               --no-playlist \
+              --retries infinite \
+              --fragment-retries infinite \
+              --retry-sleep 2 \
               -f "best" \
               -g \
-              "$TIKTOK_URL" 2>/dev/null | head -n 1)
+              "$TIKTOK_URL" > stream_url.txt
 
-            if [ -z "$STREAM_URL" ]; then
-              echo "TikTok stream URL not available."
+            if [ ! -s stream_url.txt ]; then
+              echo "No TikTok stream URL obtained."
               echo "Retrying in 20 seconds..."
               sleep 20
               continue
             fi
 
-            echo "Fresh TikTok stream URL obtained."
-            echo "Starting YouTube LIVE..."
+            STREAM_URL=$(head -n 1 stream_url.txt)
+
+            echo "Stream URL obtained."
+            echo "Starting FFmpeg..."
 
             ffmpeg \
               -hide_banner \
@@ -51,7 +76,7 @@ jobs:
               -reconnect_at_eof 1 \
               -reconnect_streamed 1 \
               -reconnect_delay_max 15 \
-              -user_agent "Mozilla/5.0" \
+              -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36" \
               -i "$STREAM_URL" \
               -c:v libx264 \
               -preset veryfast \
@@ -69,7 +94,11 @@ jobs:
               -f flv \
               "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
 
+            echo "========================================"
             echo "FFmpeg stopped."
-            echo "Retrying with a fresh TikTok URL in 10 seconds..."
+            echo "Refreshing TikTok stream..."
+            echo "========================================"
+
             sleep 10
+
           done
