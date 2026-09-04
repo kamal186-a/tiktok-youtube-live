@@ -1,10 +1,27 @@
-      - name: TikTok to YouTube with Auto Retry
+name: TikTok to YouTube Live
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Install FFmpeg and yt-dlp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip
+          python3 -m pip install -U yt-dlp
+
+      - name: TikTok to YouTube
         env:
           TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
           YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
-          while true; do
-
+          while true
+          do
             echo "======================================"
             echo "Getting fresh TikTok LIVE stream URL..."
             echo "======================================"
@@ -22,7 +39,7 @@
               continue
             fi
 
-            echo "Fresh stream URL obtained."
+            echo "Fresh TikTok stream URL obtained."
             echo "Starting YouTube LIVE..."
 
             ffmpeg \
@@ -34,8 +51,7 @@
               -reconnect_at_eof 1 \
               -reconnect_streamed 1 \
               -reconnect_delay_max 15 \
-              -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36" \
-              -http_persistent 1 \
+              -user_agent "Mozilla/5.0" \
               -i "$STREAM_URL" \
               -c:v libx264 \
               -preset veryfast \
@@ -54,7 +70,6 @@
               "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
 
             echo "FFmpeg stopped."
-            echo "Getting a completely fresh TikTok URL..."
+            echo "Retrying with a fresh TikTok URL in 10 seconds..."
             sleep 10
-
           done
