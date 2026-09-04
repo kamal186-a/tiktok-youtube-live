@@ -1,26 +1,10 @@
-name: TikTok to YouTube Live
-
-on:
-  workflow_dispatch:
-
-jobs:
-  stream:
-    runs-on: ubuntu-latest
-    timeout-minutes: 350
-
-    steps:
-      - name: Install FFmpeg and yt-dlp
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg python3-pip
-          python3 -m pip install -U yt-dlp
-
       - name: TikTok to YouTube with Auto Retry
         env:
           TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
           YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
           while true; do
+
             echo "======================================"
             echo "Getting fresh TikTok LIVE stream URL..."
             echo "======================================"
@@ -32,9 +16,9 @@ jobs:
               "$TIKTOK_URL" 2>/dev/null | head -n 1)
 
             if [ -z "$STREAM_URL" ]; then
-              echo "Could not get stream URL."
-              echo "Waiting 30 seconds..."
-              sleep 30
+              echo "TikTok stream URL not available."
+              echo "Retrying in 20 seconds..."
+              sleep 20
               continue
             fi
 
@@ -45,10 +29,13 @@ jobs:
               -hide_banner \
               -loglevel info \
               -re \
-              -rw_timeout 30000000 \
+              -rw_timeout 60000000 \
               -reconnect 1 \
+              -reconnect_at_eof 1 \
               -reconnect_streamed 1 \
-              -reconnect_delay_max 10 \
+              -reconnect_delay_max 15 \
+              -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36" \
+              -http_persistent 1 \
               -i "$STREAM_URL" \
               -c:v libx264 \
               -preset veryfast \
@@ -66,7 +53,8 @@ jobs:
               -f flv \
               "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
 
-            echo "FFmpeg stopped or TikTok connection failed."
-            echo "Getting a new stream URL in 15 seconds..."
-            sleep 15
+            echo "FFmpeg stopped."
+            echo "Getting a completely fresh TikTok URL..."
+            sleep 10
+
           done
