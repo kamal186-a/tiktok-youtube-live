@@ -1,24 +1,3 @@
-name: TikTok to YouTube Live
-
-on:
-  workflow_dispatch:
-
-jobs:
-  stream:
-    runs-on: ubuntu-latest
-    timeout-minutes: 350
-
-    steps:
-      - name: Install FFmpeg and Streamlink
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg python3-pip
-          python3 -m pip install -U streamlink
-
-      - name: Check Streamlink
-        run: |
-          streamlink --version
-
       - name: TikTok to YouTube
         env:
           TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
@@ -26,27 +5,44 @@ jobs:
         run: |
           echo "Checking TikTok LIVE..."
 
-          streamlink \
-            --loglevel info \
-            "$TIKTOK_URL" \
-            best \
-            --stdout | \
-          ffmpeg \
-            -hide_banner \
-            -loglevel info \
-            -i pipe:0 \
-            -c:v libx264 \
-            -preset veryfast \
-            -pix_fmt yuv420p \
-            -b:v 4500k \
-            -maxrate 4500k \
-            -bufsize 9000k \
-            -r 30 \
-            -g 60 \
-            -keyint_min 60 \
-            -sc_threshold 0 \
-            -c:a aac \
-            -b:a 128k \
-            -ar 44100 \
-            -f flv \
-            "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
+          while true
+          do
+            echo "======================================"
+            echo "Trying TikTok LIVE..."
+            echo "======================================"
+
+            streamlink \
+              --loglevel info \
+              --retry-streams 10 \
+              --retry-max 0 \
+              --retry-open 10 \
+              --stream-segment-attempts 10 \
+              --stream-segment-timeout 30 \
+              --stream-timeout 120 \
+              "$TIKTOK_URL" \
+              best \
+              --stdout | \
+            ffmpeg \
+              -hide_banner \
+              -loglevel info \
+              -i pipe:0 \
+              -c:v libx264 \
+              -preset veryfast \
+              -pix_fmt yuv420p \
+              -b:v 4500k \
+              -maxrate 4500k \
+              -bufsize 9000k \
+              -r 30 \
+              -g 60 \
+              -keyint_min 60 \
+              -sc_threshold 0 \
+              -c:a aac \
+              -b:a 128k \
+              -ar 44100 \
+              -f flv \
+              "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
+
+            echo "TikTok connection ended."
+            echo "Retrying in 15 seconds..."
+            sleep 15
+          done
