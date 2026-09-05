@@ -23,7 +23,7 @@ jobs:
       - name: TikTok to YouTube Vertical Live
         env:
           TIKTOK_URL: "https://www.tiktok.com/@maggiemoff11/live"
-          YOUTUBE_STREAM_KEY: "ybqv-9jvj-2ky3-ymzx-48mm"
+          YOUTUBE_STREAM_KEY: "k816-fpr7-fwtx-6eaq-37mk"
         run: |
 
           while true
