@@ -22,8 +22,8 @@ jobs:
 
       - name: TikTok to YouTube Vertical Live
         env:
-          TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
-          YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+          TIKTOK_URL: "https://www.tiktok.com/@maggiemoff11/live"
+          YOUTUBE_STREAM_KEY: "ybqv-9jvj-2ky3-ymzx-48mm"
         run: |
 
           while true
