@@ -53,7 +53,8 @@ jobs:
             -preset ultrafast \
             -tune zerolatency \
             -pix_fmt yuv420p \
-            -s 1280x720 \
+            -s 720x1280 \
+            -aspect 9:16 \
             -b:v 2500k \
             -maxrate 2500k \
             -bufsize 3750k \
