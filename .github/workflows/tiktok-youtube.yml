@@ -1,4 +1,31 @@
-- name: TikTok to YouTube
+name: TikTok to YouTube Live
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Install FFmpeg and Streamlink
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip
+          python3 -m pip install -U streamlink
+
+      - name: Check Streamlink
+        run: |
+          streamlink --version
+
+      - name: Check runner upload bandwidth (diagnostic only)
+        run: |
+          echo "Testing upload speed..."
+          curl -s -o /dev/null -w "Upload speed: %{speed_upload} bytes/sec\n" \
+            -T /etc/hostname http://speedtest.tele2.net/upload.php || true
+
+      - name: TikTok to YouTube
         env:
           TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
           YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
@@ -7,13 +34,35 @@
 
           streamlink \
             --loglevel info \
+            --hls-live-edge 6 \
+            --stream-segment-threads 2 \
+            --retry-streams 5 \
+            --retry-max 10 \
+            --stream-timeout 60 \
             "$TIKTOK_URL" \
             best \
             --stdout | \
           ffmpeg \
             -hide_banner \
             -loglevel info \
+            -thread_queue_size 1024 \
+            -fflags +genpts \
+            -avoid_negative_ts make_zero \
             -i pipe:0 \
-            -c copy \
+            -c:v libx264 \
+            -preset ultrafast \
+            -tune zerolatency \
+            -pix_fmt yuv420p \
+            -s 1280x720 \
+            -b:v 2500k \
+            -maxrate 2500k \
+            -bufsize 3750k \
+            -r 30 \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -c:a aac \
+            -b:a 128k \
+            -ar 44100 \
             -f flv \
             "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
