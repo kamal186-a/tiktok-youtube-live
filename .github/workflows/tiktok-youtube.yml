@@ -9,6 +9,7 @@ jobs:
     timeout-minutes: 360
 
     steps:
+
       - name: Install FFmpeg, Streamlink and fonts
         run: |
           sudo apt-get update
@@ -29,7 +30,9 @@ jobs:
         env:
           TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
           YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+
         run: |
+
           stream_from() {
             local URL="$1"
 
@@ -43,7 +46,7 @@ jobs:
               --retry-max 10 \
               --stream-timeout 60 \
               "$URL" \
-              best \
+              h264_hd \
               --stdout | \
             ffmpeg \
               -hide_banner \
@@ -74,6 +77,7 @@ jobs:
               "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
           }
 
+
           # Keep retrying the same TikTok URL
           while true; do
 
@@ -84,9 +88,10 @@ jobs:
 
             echo "Checking TikTok LIVE URL..."
 
-            if streamlink --stream-url "$TIKTOK_URL" best > /dev/null 2>&1; then
+            if streamlink --stream-url "$TIKTOK_URL" h264_hd > /dev/null 2>&1; then
 
               echo "TikTok LIVE is available."
+
               stream_from "$TIKTOK_URL"
 
               echo "Stream ended. Checking again in 15 seconds..."
