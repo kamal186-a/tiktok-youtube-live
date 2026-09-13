@@ -1,3 +1,4 @@
+```yaml
 name: TikTok to YouTube Live
 
 on:
@@ -19,85 +20,46 @@ jobs:
         run: |
           streamlink --version
 
-      - name: Check runner upload bandwidth (diagnostic only)
-        run: |
-          echo "Testing upload speed..."
-          curl -s -o /dev/null -w "Upload speed: %{speed_upload} bytes/sec\n" \
-            -T /etc/hostname http://speedtest.tele2.net/upload.php || true
-
-      - name: TikTok to YouTube (auto-fallback across 4 links)
+      - name: TikTok to YouTube
         env:
           TIKTOK_URL: ${{ secrets.TIKTOK_URL }}
-          TIKTOK_URL_2: ${{ secrets.TIKTOK_URL_2 }}
-          TIKTOK_URL_3: ${{ secrets.TIKTOK_URL_3 }}
-          TIKTOK_URL_4: ${{ secrets.TIKTOK_URL_4 }}
           YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
-          # List of TikTok links to try, in order of priority
-          URLS=("$TIKTOK_URL" "$TIKTOK_URL_2" "$TIKTOK_URL_3" "$TIKTOK_URL_4")
-
-          stream_from() {
-            local URL="$1"
-            echo "Attempting to stream from: $URL"
-            streamlink \
-              --loglevel info \
-              --hls-live-edge 6 \
-              --stream-segment-threads 2 \
-              --retry-streams 5 \
-              --retry-max 10 \
-              --stream-timeout 60 \
-              "$URL" \
-              best \
-              --stdout | \
-            ffmpeg \
-              -hide_banner \
-              -loglevel info \
-              -thread_queue_size 1024 \
-              -fflags +genpts \
-              -avoid_negative_ts make_zero \
-              -i pipe:0 \
-              -c:v libx264 \
-              -preset ultrafast \
-              -tune zerolatency \
-              -pix_fmt yuv420p \
-              -vf "scale=720:1280,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='Whatsapp +923301879186':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=h-th-40:box=1:boxcolor=black@0.5:boxborderw=8" \
-              -aspect 9:16 \
-              -b:v 2500k \
-              -maxrate 2500k \
-              -bufsize 3750k \
-              -r 30 \
-              -g 60 \
-              -keyint_min 60 \
-              -sc_threshold 0 \
-              -af "highpass=f=80,afftdn=nf=-25,loudnorm=I=-16:TP=-1.5:LRA=11" \
-              -c:a aac \
-              -b:a 160k \
-              -ac 2 \
-              -ar 44100 \
-              -f flv \
-              "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
-          }
-
-          # Keep looping until the job's own timeout kills it.
-          # Whenever the currently streaming link ends (goes offline),
-          # this loop starts over and checks every URL again in order.
-          while true; do
-            STREAMED=false
-            for URL in "${URLS[@]}"; do
-              if [ -z "$URL" ]; then
-                continue
-              fi
-              # Quick check: is this link currently live?
-              if streamlink --stream-url "$URL" best > /dev/null 2>&1; then
-                stream_from "$URL"
-                STREAMED=true
-                echo "Stream from $URL ended. Re-checking links..."
-                break
-              fi
-            done
-
-            if [ "$STREAMED" = false ]; then
-              echo "No live link found among the URLs. Retrying in 15s..."
-              sleep 15
-            fi
-          done
+          streamlink \
+            --loglevel info \
+            --hls-live-edge 6 \
+            --stream-segment-threads 2 \
+            --retry-streams 5 \
+            --retry-max 10 \
+            --stream-timeout 60 \
+            "$TIKTOK_URL" \
+            best \
+            --stdout | \
+          ffmpeg \
+            -hide_banner \
+            -loglevel info \
+            -thread_queue_size 1024 \
+            -fflags +genpts \
+            -avoid_negative_ts make_zero \
+            -i pipe:0 \
+            -c:v libx264 \
+            -preset ultrafast \
+            -tune zerolatency \
+            -pix_fmt yuv420p \
+            -vf "scale=720:1280,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='Whatsapp +923301879186':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=h-th-40:box=1:boxcolor=black@0.5:boxborderw=8" \
+            -aspect 9:16 \
+            -b:v 2500k \
+            -maxrate 2500k \
+            -bufsize 3750k \
+            -r 30 \
+            -g 60 \
+            -keyint_min 60 \
+            -sc_threshold 0 \
+            -af "highpass=f=80,afftdn=nf=-25,loudnorm=I=-16:TP=-1.5:LRA=11" \
+            -c:a aac \
+            -b:a 160k \
+            -ac 2 \
+            -ar 44100 \
+            -f flv \
+            "rtmps://a.rtmps.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
+```
